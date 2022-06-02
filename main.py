@@ -1,12 +1,6 @@
 from fastapi import FastAPI, HTTPException, Form, Header, Request, Query
-from fastapi.responses import (
-    Response,
-    PlainTextResponse,
-    RedirectResponse,
-    JSONResponse,
-    HTMLResponse,
-)
-from os.path import exists
+from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import Required
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing import Union
@@ -25,6 +19,7 @@ app = FastAPI(
     redoc_url="/",
     # docs_url=None,
 )
+app.mount("/app", StaticFiles(directory="public", html=True), name="app")
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -160,18 +155,3 @@ async def devel_put(
     if response.status_code == requests.codes.ok:
         return json.loads(response.text)
     raise HTTPException(status_code=response.status_code, detail=response.text)
-
-
-@app.get("/{file}")
-async def read_root(file: str):
-    if file == "" or not exists(f"public/{file}"):
-        raise HTTPException(status_code=404)
-    with open(f"public/{file}") as f:
-        data = f.read()
-    if file.endswith(".html"):
-        return HTMLResponse(content=data, status_code=requests.codes.ok)
-    elif file.endswith(".js"):
-        return Response(
-            content=data, status_code=requests.codes.ok, media_type="text/javascript"
-        )
-    raise HTTPException(status_code=404)
