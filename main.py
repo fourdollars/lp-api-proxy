@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Form, Header, Request, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import Required
@@ -20,6 +21,15 @@ app = FastAPI(
     # docs_url=None,
 )
 app.mount("/app", StaticFiles(directory="public", html=True), name="app")
+
+origins = ["http://localhost:8000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["GET", "OPTIONS", "PATCH", "POST", "PUT"],
+    allow_headers=["Authorization"],
+)
 
 
 @app.exception_handler(StarletteHTTPException)
