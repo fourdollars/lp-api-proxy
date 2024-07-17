@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Form, Header, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+# from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Annotated, Union
 import json
 import requests
@@ -16,7 +17,9 @@ app = FastAPI(
     description="https://github.com/fourdollars/lp-api-proxy/",
     version="0.0.0",
     redoc_url='/',
-    # docs_url=None,
+    docs_url='/docs',
+    openapi_url="/openapi.json",
+    # root_path='/lp-api',
 )
 
 origins = ["*"]
@@ -27,6 +30,17 @@ app.add_middleware(
     allow_methods=["GET", "OPTIONS", "PATCH", "POST", "PUT"],
     allow_headers=["Authorization"],
 )
+
+# Workaround the stupid reverse proxy server issue from some hosting service.
+# class PathCorrectionMiddleware(BaseHTTPMiddleware):
+#     async def dispatch(self, request, call_next):
+#         if request.url.path.startswith("//"):
+#             request.scope["path"] = request.url.path[1:]
+#         response = await call_next(request)
+#         return response
+
+
+# app.add_middleware(PathCorrectionMiddleware)
 
 
 @app.exception_handler(StarletteHTTPException)
