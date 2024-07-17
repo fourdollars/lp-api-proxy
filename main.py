@@ -1,10 +1,8 @@
 from fastapi import FastAPI, HTTPException, Form, Header, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import Required
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from typing import Union
+from typing import Annotated, Union
 import json
 import requests
 import urllib.parse
@@ -17,10 +15,9 @@ app = FastAPI(
     title="Launchpad API Proxy",
     description="https://github.com/fourdollars/lp-api-proxy/",
     version="0.0.0",
-    redoc_url="/",
+    redoc_url='/',
     # docs_url=None,
 )
-app.mount("/app", StaticFiles(directory="public", html=True), name="app")
 
 origins = ["*"]
 
@@ -39,9 +36,9 @@ def http_exception_handler(request, exc):
 
 @app.post("/+request-token", response_class=PlainTextResponse)
 def request_token(
-    oauth_consumer_key: str = Form(default=Required),
-    oauth_signature_method: str = Form(default=Required),
-    oauth_signature: str = Form(default=Required),
+    oauth_consumer_key: Annotated[str, Form()],
+    oauth_signature_method: Annotated[str, Form()],
+    oauth_signature: Annotated[str, Form()],
 ):
     data = {
         "oauth_consumer_key": oauth_consumer_key,
@@ -59,7 +56,7 @@ def request_token(
 
 @app.get("/+authorize-token", response_class=RedirectResponse)
 def authorize_token(
-    oauth_token: str = Query(default=Required),
+    oauth_token: Annotated[str, Query()],
     allow_permission: str = None,
     oauth_callback: str = None,
 ):
@@ -76,10 +73,10 @@ def authorize_token(
 
 @app.post("/+access-token", response_class=PlainTextResponse)
 def access_token(
-    oauth_token: str = Form(default=Required),
-    oauth_consumer_key: str = Form(default=Required),
-    oauth_signature_method: str = Form(default=Required),
-    oauth_signature: str = Form(default=Required),
+    oauth_token: Annotated[str, Form()],
+    oauth_consumer_key: Annotated[str, Form()],
+    oauth_signature_method: Annotated[str, Form()],
+    oauth_signature: Annotated[str, Form()],
 ):
     data = {
         "oauth_token": oauth_token,
