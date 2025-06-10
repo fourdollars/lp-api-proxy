@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Form, Header, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
 # from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Annotated, Union
 import json
@@ -16,8 +17,8 @@ app = FastAPI(
     title="Launchpad API Proxy",
     description="https://github.com/fourdollars/lp-api-proxy/",
     version="0.0.0",
-    redoc_url='/',
-    docs_url='/docs',
+    redoc_url="/",
+    docs_url="/docs",
     openapi_url="/openapi.json",
     # root_path='/lp-api',
 )
