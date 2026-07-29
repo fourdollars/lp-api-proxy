@@ -2,6 +2,7 @@
 name = "lp-api-proxy"
 version = "0.1.0"
 requires-python = ">=3.13"
+license = { text = "MIT" }
 dependencies = [
     "cryptography>=42.0.0",
     "fastapi>=0.115.12",

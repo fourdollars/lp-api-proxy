@@ -1,5 +1,9 @@
 # Launchpad API proxy
 
+[![Test](https://github.com/fourdollars/lp-api-proxy/actions/workflows/test.yaml/badge.svg)](https://github.com/fourdollars/lp-api-proxy/actions/workflows/test.yaml)
+[![CharmHub](https://img.shields.io/badge/CharmHub-lp--api--proxy-blue)](https://charmhub.io/lp-api-proxy)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 `lp-api-proxy` is a lightweight OIDC Provider for clients such as Concourse CI.
 It converts Launchpad OAuth 1.0a login into standard OAuth 2.0/OIDC tokens.
 

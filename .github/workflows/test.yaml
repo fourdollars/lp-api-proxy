@@ -1,0 +1,63 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck python3-yaml python3-pip
+          python3 -m pip install -r requirements.txt
+
+      - name: Lint shell hooks
+        run: |
+          find hooks -type f -executable -exec shellcheck -x {} +
+
+      - name: Validate YAML files
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('metadata.yaml'))"
+          python3 -c "import yaml; yaml.safe_load(open('config.yaml'))"
+          python3 -c "import yaml; yaml.safe_load(open('charmcraft.yaml'))"
+          python3 -c "import yaml; yaml.safe_load(open('.github/workflows/test.yaml'))"
+          python3 -c "import yaml; yaml.safe_load(open('.github/workflows/publish.yaml'))"
+
+      - name: Check hook permissions
+        run: |
+          for hook in hooks/*; do
+            if [ -f "$hook" ] && [ ! -x "$hook" ]; then
+              echo "ERROR: $hook is not executable"
+              exit 1
+            fi
+          done
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -p "test_*.py"
+
+  pack:
+    runs-on: ubuntu-24.04
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install charmcraft
+        run: sudo snap install charmcraft --classic
+
+      - name: Pack charm
+        run: charmcraft pack --destructive-mode
+
+      - name: Upload charm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp-api-proxy-charm
+          path: "*.charm"
+          retention-days: 30
