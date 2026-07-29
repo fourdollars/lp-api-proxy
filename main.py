@@ -19,6 +19,7 @@ import secrets
 import time
 import urllib.parse
 import warnings
+import re
 
 import jwt
 import requests
@@ -48,10 +49,48 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 LP_CONSUMER_KEY = os.environ.get("LP_CONSUMER_KEY", "lp-api-proxy")
 LP_CONSUMER_SECRET = os.environ.get("LP_CONSUMER_SECRET", "")
 LP_SIGNATURE_METHOD = os.environ.get("LP_SIGNATURE_METHOD", "PLAINTEXT")
+PROXY_ALLOWED_ORIGINS = [
+    item.strip().lower().rstrip("/")
+    for item in os.environ.get("PROXY_ALLOWED_ORIGINS", "").split(",")
+    if item.strip()
+]
+MAX_CONSUMER_KEY_LENGTH = 255
 
 
 def _percent_encode(value):
     return urllib.parse.quote(str(value), safe="~")
+
+
+def _origin_from_redirect_uri(redirect_uri):
+    if not redirect_uri:
+        return None
+    try:
+        parsed = urllib.parse.urlsplit(redirect_uri)
+    except ValueError:
+        return None
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return None
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+
+def _normalize_consumer_key(value):
+    text = (value or "").replace("\r", " ").replace("\n", " ").strip()
+    text = re.sub(r"\s+", " ", text)
+    # Keep a conservative ASCII subset to avoid Launchpad-side parsing issues.
+    text = re.sub(r"[^A-Za-z0-9 ._:/()\-]", "", text)
+    return text[:MAX_CONSUMER_KEY_LENGTH] if text else LP_CONSUMER_KEY
+
+
+def _dynamic_consumer_key(client_id, redirect_uri):
+    origin = _origin_from_redirect_uri(redirect_uri)
+    if not origin:
+        return LP_CONSUMER_KEY
+
+    if origin.lower().rstrip("/") not in PROXY_ALLOWED_ORIGINS:
+        return LP_CONSUMER_KEY
+
+    base = (client_id or "").strip() or LP_CONSUMER_KEY
+    return _normalize_consumer_key(f"{base} ({origin})")
 
 
 def _oauth1_hmac_sha1_signature(
@@ -171,6 +210,9 @@ def _oauth1_authorization_header(
 #
 # Optional:
 #   PROXY_BASE_URL            Public base URL (default: http://localhost:3456).
+#   PROXY_ALLOWED_ORIGINS     Comma-separated redirect_uri origins allowed for:
+#                              1) CORS allow_origins
+#                              2) dynamic Launchpad oauth_consumer_key naming
 #   PROXY_RSA_PRIVATE_KEY     PEM RSA private key for RS256 id_tokens.
 #                              Generate: openssl genrsa 2048
 #                              Omitting generates an ephemeral key (not for production).
@@ -380,9 +422,9 @@ def _lp_fetch_groups(oauth_authorization_header, me_data):
     return sorted(group_names), sorted(group_urls)
 
 
-def _lp_fetch_me(oauth_token, oauth_token_secret):
+def _lp_fetch_me(oauth_token, oauth_token_secret, oauth_consumer_key):
     auth = _oauth1_authorization_header(
-        LP_CONSUMER_KEY,
+        oauth_consumer_key,
         LP_CONSUMER_SECRET,
         token=oauth_token,
         token_secret=oauth_token_secret,
@@ -450,7 +492,7 @@ app = FastAPI(
     # root_path='/lp-api',
 )
 
-origins = ["*"]
+origins = PROXY_ALLOWED_ORIGINS if PROXY_ALLOWED_ORIGINS else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -601,9 +643,10 @@ def oauth2_launchpad_login(
     OAuth 1.0a consumer; callers only need to speak standard OIDC."""
     _require_jwt_secret()
     _fernet()
+    oauth_consumer_key = _dynamic_consumer_key(client_id, redirect_uri)
 
     request_token_data = _oauth1_params(
-        LP_CONSUMER_KEY,
+        oauth_consumer_key,
         LP_CONSUMER_SECRET,
         signature_method=LP_SIGNATURE_METHOD,
         http_method="POST",
@@ -631,6 +674,7 @@ def oauth2_launchpad_login(
             "typ": "lp-login-session",
             "req_token": req_token,
             "req_token_secret": req_token_secret,
+            "oauth_consumer_key": oauth_consumer_key,
             "client_id": client_id or PROXY_OIDC_CLIENT_ID,
             "redirect_uri": redirect_uri,
             "state": state,
@@ -671,9 +715,10 @@ def oauth2_launchpad_callback(
         raise HTTPException(
             status_code=400, detail="oauth_token does not match the login session"
         )
+    oauth_consumer_key = claims.get("oauth_consumer_key", LP_CONSUMER_KEY)
 
     access_token_data = _oauth1_params(
-        LP_CONSUMER_KEY,
+        oauth_consumer_key,
         LP_CONSUMER_SECRET,
         token=oauth_token,
         token_secret=claims["req_token_secret"],
@@ -696,7 +741,7 @@ def oauth2_launchpad_callback(
             detail=f"Unexpected response from Launchpad +access-token: {response.text}",
         )
 
-    user = _lp_fetch_me(lp_token, lp_token_secret)
+    user = _lp_fetch_me(lp_token, lp_token_secret, oauth_consumer_key)
 
     encrypted_cred = (
         _fernet()
@@ -705,7 +750,7 @@ def oauth2_launchpad_callback(
                 {
                     "oauth_token": lp_token,
                     "oauth_token_secret": lp_token_secret,
-                    "oauth_consumer_key": LP_CONSUMER_KEY,
+                    "oauth_consumer_key": oauth_consumer_key,
                 }
             ).encode()
         )

@@ -19,6 +19,10 @@ options:
     type: string
     default: ""
     description: Optional NO_PROXY list (comma-separated hosts/domains/CIDRs).
+  allowed-origins:
+    type: string
+    default: ""
+    description: Comma-separated origins used for CORS allowlist and dynamic Launchpad application naming.
   proxy-base-url:
     type: string
     default: ""

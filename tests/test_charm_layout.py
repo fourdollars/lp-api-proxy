@@ -35,12 +35,14 @@ class CharmLayoutTest(unittest.TestCase):
         self.assertIn("http-proxy:", config)
         self.assertIn("https-proxy:", config)
         self.assertIn("no-proxy:", config)
+        self.assertIn("allowed-origins:", config)
 
     def test_common_hook_supports_proxy_envs(self):
         common = (REPO_ROOT / "hooks/common.sh").read_text()
         self.assertIn("HTTP_PROXY", common)
         self.assertIn("HTTPS_PROXY", common)
         self.assertIn("NO_PROXY", common)
+        self.assertIn("PROXY_ALLOWED_ORIGINS", common)
 
 
 if __name__ == "__main__":

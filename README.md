@@ -85,6 +85,7 @@ The OIDC `userinfo` response includes:
 | Variable | Description |
 | --- | --- |
 | `PROXY_BASE_URL` | Public base URL (default: `http://localhost:3456`). |
+| `PROXY_ALLOWED_ORIGINS` | Comma-separated origins used for CORS allowlist and dynamic Launchpad application naming (for example `http://ci.internal:8080,https://ci.example.com`). |
 | `PROXY_RSA_PRIVATE_KEY` | RSA private key PEM for RS256 `id_token` signing. |
 | `PROXY_OIDC_CLIENT_ID` | Expected OAuth client_id (default: `concourse-ci`). |
 | `PROXY_OIDC_CLIENT_SECRET` | If set, `/oauth2/token` requires matching client_secret. |
@@ -104,6 +105,7 @@ export PROXY_BASE_URL='http://localhost:3456'
 export PROXY_JWT_SECRET='replace-with-long-random-secret'
 export PROXY_JWT_ENCRYPTION_KEY='replace-with-fernet-key'
 export LP_CONSUMER_KEY='lp-api-proxy'
+export PROXY_ALLOWED_ORIGINS='http://localhost:8080'
 
 uv run --python 3.13 uvicorn main:app --host 0.0.0.0 --port 3456 --reload
 ```
@@ -127,6 +129,7 @@ Recommended config for Concourse running on the same machine:
 ```bash
 juju config -m cci lp-api-proxy \
   proxy-base-url=http://localhost:3456 \
+  allowed-origins=http://localhost:8080 \
   proxy-oidc-client-id=myclientid \
   proxy-oidc-client-secret=myclientsecret
 ```

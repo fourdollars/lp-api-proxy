@@ -117,7 +117,7 @@ write_env_file() {
   listen_port="$(to_int_string "$(config listen-port)")"
   base_url="$(effective_base_url)"
 
-  local client_id client_secret jwt_secret jwt_key jwt_issuer jwt_aud jwt_ttl code_ttl session_ttl
+  local client_id client_secret jwt_secret jwt_key jwt_issuer jwt_aud jwt_ttl code_ttl session_ttl allowed_origins
   local http_proxy https_proxy no_proxy
   client_id="$(config proxy-oidc-client-id)"
   client_secret="$(config proxy-oidc-client-secret)"
@@ -128,6 +128,7 @@ write_env_file() {
   jwt_ttl="$(to_int_string "$(config proxy-jwt-ttl-seconds)")"
   code_ttl="$(to_int_string "$(config proxy-code-ttl-seconds)")"
   session_ttl="$(to_int_string "$(config login-session-ttl-seconds)")"
+  allowed_origins="$(config allowed-origins)"
   http_proxy="$(config http-proxy)"
   https_proxy="$(config https-proxy)"
   no_proxy="$(config no-proxy)"
@@ -150,6 +151,7 @@ PROXY_JWT_AUDIENCE=${jwt_aud}
 PROXY_JWT_TTL_SECONDS=${jwt_ttl}
 PROXY_CODE_TTL_SECONDS=${code_ttl}
 LOGIN_SESSION_TTL_SECONDS=${session_ttl}
+PROXY_ALLOWED_ORIGINS=${allowed_origins}
 HTTP_PROXY=${http_proxy}
 HTTPS_PROXY=${https_proxy}
 NO_PROXY=${no_proxy}
