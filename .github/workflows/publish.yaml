@@ -42,7 +42,7 @@ jobs:
         run: charmcraft pack --destructive-mode
 
       - name: Upload charm artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lp-api-proxy-charm
           path: "*.charm"
