@@ -85,7 +85,7 @@ The OIDC `userinfo` response includes:
 | Variable | Description |
 | --- | --- |
 | `PROXY_BASE_URL` | Public base URL (default: `http://localhost:3456`). |
-| `PROXY_ALLOWED_ORIGINS` | Comma-separated origins used for CORS allowlist and dynamic Launchpad application naming (for example `http://ci.internal:8080,https://ci.example.com`). |
+| `PROXY_ALLOWED_ORIGINS` | Comma-separated origins used for CORS allowlist and enforced `/oauth2/login` `redirect_uri` origin checks. Empty means allow all origins (for example `http://ci.internal:8080,https://ci.example.com`). |
 | `PROXY_RSA_PRIVATE_KEY` | RSA private key PEM for RS256 `id_token` signing. |
 | `PROXY_OIDC_CLIENT_ID` | Expected OAuth client_id (default: `concourse-ci`). |
 | `PROXY_OIDC_CLIENT_SECRET` | If set, `/oauth2/token` requires matching client_secret. |

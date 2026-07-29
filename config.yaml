@@ -22,7 +22,7 @@ options:
   allowed-origins:
     type: string
     default: ""
-    description: Comma-separated origins used for CORS allowlist and dynamic Launchpad application naming.
+    description: Comma-separated origins used for CORS allowlist and enforced redirect_uri origin checks in /oauth2/login. Empty means allow all origins.
   proxy-base-url:
     type: string
     default: ""

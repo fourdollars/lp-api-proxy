@@ -20,11 +20,15 @@ class DynamicConsumerKeyTest(unittest.TestCase):
         )
         self.assertEqual("concourse-ci (http://ci.internal:8080)", key)
 
-    def test_dynamic_consumer_key_falls_back_when_origin_not_allowed(self):
-        key = self.main._dynamic_consumer_key(
-            "concourse-ci", "http://unknown.example/callback"
-        )
-        self.assertEqual("lp-api-proxy", key)
+    def test_oauth2_login_origin_must_be_allowlisted(self):
+        with self.assertRaises(self.main.HTTPException) as ctx:
+            self.main._require_allowed_origin("http://unknown.example/callback")
+        self.assertEqual(403, ctx.exception.status_code)
+
+    def test_oauth2_login_requires_absolute_redirect_origin_when_allowlisted(self):
+        with self.assertRaises(self.main.HTTPException) as ctx:
+            self.main._require_allowed_origin("/relative/callback")
+        self.assertEqual(400, ctx.exception.status_code)
 
     def test_dynamic_consumer_key_defaults_to_lp_consumer_key_base(self):
         key = self.main._dynamic_consumer_key(None, "https://ci.example.com/oauth2/cb")

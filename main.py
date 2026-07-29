@@ -86,11 +86,25 @@ def _dynamic_consumer_key(client_id, redirect_uri):
     if not origin:
         return LP_CONSUMER_KEY
 
-    if origin.lower().rstrip("/") not in PROXY_ALLOWED_ORIGINS:
-        return LP_CONSUMER_KEY
-
     base = (client_id or "").strip() or LP_CONSUMER_KEY
     return _normalize_consumer_key(f"{base} ({origin})")
+
+
+def _require_allowed_origin(redirect_uri):
+    origin = _origin_from_redirect_uri(redirect_uri)
+    if not PROXY_ALLOWED_ORIGINS:
+        return origin
+    if not origin:
+        raise HTTPException(
+            status_code=400,
+            detail="redirect_uri with an absolute origin is required",
+        )
+    if origin.lower().rstrip("/") not in PROXY_ALLOWED_ORIGINS:
+        raise HTTPException(
+            status_code=403,
+            detail="redirect_uri origin is not allowed by PROXY_ALLOWED_ORIGINS",
+        )
+    return origin
 
 
 def _oauth1_hmac_sha1_signature(
@@ -643,6 +657,7 @@ def oauth2_launchpad_login(
     OAuth 1.0a consumer; callers only need to speak standard OIDC."""
     _require_jwt_secret()
     _fernet()
+    _require_allowed_origin(redirect_uri)
     oauth_consumer_key = _dynamic_consumer_key(client_id, redirect_uri)
 
     request_token_data = _oauth1_params(
