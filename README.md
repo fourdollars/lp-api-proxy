@@ -1,4 +1,4 @@
-# Launchpad API proxy
+# Launchpad API Proxy
 
 [![Test](https://github.com/fourdollars/lp-api-proxy/actions/workflows/test.yaml/badge.svg)](https://github.com/fourdollars/lp-api-proxy/actions/workflows/test.yaml)
 [![CharmHub](https://img.shields.io/badge/CharmHub-lp--api--proxy-blue)](https://charmhub.io/lp-api-proxy)
@@ -6,8 +6,10 @@
 
 `lp-api-proxy` is a lightweight OIDC Provider for clients such as Concourse CI.
 It converts Launchpad OAuth 1.0a login into standard OAuth 2.0/OIDC tokens.
+For Concourse CI setup details, see the
+[Generic OAuth configuration guide](https://concourse-ci.org/docs/auth-and-teams/configuring/generic-oauth/).
 
-## Setup
+## Quick start (local)
 
 ```bash
 git clone --depth=1 https://github.com/fourdollars/lp-api-proxy.git
@@ -16,11 +18,16 @@ uv sync --python 3.13
 uv run gunicorn main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:3456 -w 4
 ```
 
+Then open:
+
+- `http://localhost:3456/example.html`
+- `http://localhost:3456/.well-known/openid-configuration`
+
 ## How it works
 
 ```mermaid
 sequenceDiagram
-    participant CI as Concourse CI / Fly
+    participant CI as Concourse CI
     participant Proxy as lp-api-proxy
     participant LP as Launchpad
 
@@ -36,7 +43,7 @@ sequenceDiagram
 ```
 
 The proxy is stateless: it does not store user tokens in DB/Redis.
-Per-user Launchpad credentials are encrypted and carried inside signed JWTs.
+Per-user Launchpad credentials are encrypted inside `lp_cred` and carried in signed JWTs.
 
 The OIDC `userinfo` response includes:
 
@@ -64,7 +71,7 @@ The OIDC `userinfo` response includes:
 
 `/devel/{api}` accepts:
 - `Authorization: OAuth ...` (raw Launchpad OAuth 1.0a)
-- `Authorization: Bearer <proxy-access-token>` (issued by `/oauth2/token`)
+- `Authorization: Bearer <access_token>` (issued by `/oauth2/token`)
 
 ## Required environment variables
 
@@ -96,20 +103,20 @@ The OIDC `userinfo` response includes:
 export PROXY_BASE_URL='http://localhost:3456'
 export PROXY_JWT_SECRET='replace-with-long-random-secret'
 export PROXY_JWT_ENCRYPTION_KEY='replace-with-fernet-key'
-export LP_CONSUMER_KEY='lp-api-proxy-local-test'
+export LP_CONSUMER_KEY='lp-api-proxy'
 
 uv run --python 3.13 uvicorn main:app --host 0.0.0.0 --port 3456 --reload
 ```
 
-Then open:
-
-- `http://localhost:3456/example.html`
-- `http://localhost:3456/.well-known/openid-configuration`
-
 ## Deploy with Juju machine charm
 
-This repository now includes a machine charm (`metadata.yaml`, `config.yaml`,
-`hooks/*`) so you can deploy directly:
+Deploy from CharmHub edge channel:
+
+```bash
+juju deploy lp-api-proxy --channel edge
+```
+
+Or deploy this repository path directly:
 
 ```bash
 juju deploy -m cci --base ubuntu@24.04 /path/to/lp-api-proxy lp-api-proxy --to 0
@@ -124,6 +131,9 @@ juju config -m cci lp-api-proxy \
   proxy-oidc-client-secret=myclientsecret
 ```
 
+For public access from other hosts, set `proxy-base-url` to a reachable unit URL
+(for example `http://<unit-ip>:3456`) instead of `localhost`.
+
 ## Concourse group authorization
 
 You can use Concourse team group mapping directly:
@@ -132,5 +142,5 @@ You can use Concourse team group mapping directly:
 CONCOURSE_MAIN_TEAM_OAUTH_GROUP=my-group
 ```
 
-Because `userinfo.groups` now contains Launchpad team names, Concourse can
-match `my-group` without additional claim transformation.
+Because `userinfo.groups` contains Launchpad team names, Concourse can match
+`my-group` without additional claim transformation.
