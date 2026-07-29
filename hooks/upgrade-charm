@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+. "$(dirname "$0")/common.sh"
+
+ensure_runtime
+write_env_file
+write_service_file
+reload_and_restart_service
+status-set active "lp-api-proxy ready at $(effective_base_url)"

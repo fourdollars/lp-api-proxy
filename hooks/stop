@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+. "$(dirname "$0")/common.sh"
+
+stop_service
+status-set maintenance "lp-api-proxy stopped"

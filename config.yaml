@@ -1,0 +1,65 @@
+options:
+  listen-host:
+    type: string
+    default: 0.0.0.0
+    description: Listen host for uvicorn.
+  listen-port:
+    type: int
+    default: 3456
+    description: Listen port for uvicorn.
+  http-proxy:
+    type: string
+    default: ""
+    description: Optional HTTP proxy URL for apt/pip/runtime outbound requests.
+  https-proxy:
+    type: string
+    default: ""
+    description: Optional HTTPS proxy URL for apt/pip/runtime outbound requests.
+  no-proxy:
+    type: string
+    default: ""
+    description: Optional NO_PROXY list (comma-separated hosts/domains/CIDRs).
+  proxy-base-url:
+    type: string
+    default: ""
+    description: Public issuer base URL; auto-derived from unit private address when empty.
+  proxy-oidc-client-id:
+    type: string
+    default: concourse-ci
+    description: Expected OAuth/OIDC client id.
+  proxy-oidc-client-secret:
+    type: string
+    default: ""
+    description: Optional OAuth/OIDC client secret for confidential clients.
+  proxy-jwt-secret:
+    type: string
+    default: ""
+    description: HS256 signing secret; auto-generated when empty.
+  proxy-jwt-encryption-key:
+    type: string
+    default: ""
+    description: Fernet key; auto-generated when empty.
+  proxy-rsa-private-key:
+    type: string
+    default: ""
+    description: Optional PEM RSA private key for stable RS256 id_token signing.
+  proxy-jwt-issuer:
+    type: string
+    default: ""
+    description: Optional issuer claim override.
+  proxy-jwt-audience:
+    type: string
+    default: concourse-ci
+    description: Access-token audience claim.
+  proxy-jwt-ttl-seconds:
+    type: int
+    default: 2592000
+    description: Access-token lifetime in seconds.
+  proxy-code-ttl-seconds:
+    type: int
+    default: 120
+    description: Authorization code lifetime in seconds.
+  login-session-ttl-seconds:
+    type: int
+    default: 600
+    description: Login session token lifetime in seconds.

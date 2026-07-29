@@ -102,6 +102,24 @@ Then open:
 - `http://localhost:3456/example.html`
 - `http://localhost:3456/.well-known/openid-configuration`
 
+## Deploy with Juju machine charm
+
+This repository now includes a machine charm (`metadata.yaml`, `config.yaml`,
+`hooks/*`) so you can deploy directly:
+
+```bash
+juju deploy -m cci --base ubuntu@24.04 /path/to/lp-api-proxy lp-api-proxy --to 0
+```
+
+Recommended config for Concourse running on the same machine:
+
+```bash
+juju config -m cci lp-api-proxy \
+  proxy-base-url=http://localhost:3456 \
+  proxy-oidc-client-id=myclientid \
+  proxy-oidc-client-secret=myclientsecret
+```
+
 ## Concourse group authorization
 
 You can use Concourse team group mapping directly:

@@ -1,0 +1,18 @@
+name: lp-api-proxy
+summary: Launchpad OAuth1.0a to OIDC/OAuth2 proxy
+description: |
+  Machine charm for deploying lp-api-proxy as a local OIDC provider backed by
+  Launchpad OAuth 1.0a.
+
+  It also serves as a CORS-friendly front door for browser clients that need
+  to call Launchpad API flows through a single same-origin endpoint.
+maintainers:
+  - Shih-Yuan Lee <fourdollars@gmail.com>
+tags:
+  - oauth
+  - oidc
+  - launchpad
+series:
+  - jammy
+  - noble
+  - resolute
