@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>lp-api-proxy — Test Page</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: .3rem; }
+  button { font-size: 1rem; padding: .5rem 1rem; cursor: pointer; margin-right: .5rem; }
+  pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: .75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .error { color: #b00020; }
+  label { display: block; margin: .4rem 0 .1rem; font-size: .9rem; color: #555; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: .4rem; font-size: .95rem; }
+  .row { display: flex; gap: .5rem; align-items: center; }
+  .row > div { flex: 1; }
+</style>
+</head>
+<body>
+  <h1>lp-api-proxy — Test Page</h1>
+  <p>
+    This page lets you test the proxy acting as an <strong>OIDC Provider backed by Launchpad</strong>.
+    The proxy drives Launchpad's OAuth 1.0a flow, then issues a standard
+    <code>id_token</code> (RS256) and <code>access_token</code> you can use to
+    call <code>/devel/*</code>.
+  </p>
+
+  <h2>OIDC Discovery</h2>
+  <pre id="discovery">Loading /.well-known/openid-configuration …</pre>
+
+  <h2>Login with Launchpad (PKCE Authorization Code Flow)</h2>
+  <p><button id="lp-login">Login with Launchpad</button>
+     <button id="lp-logout">Clear session</button></p>
+  <pre id="lp-tokens">(not logged in)</pre>
+
+  <h2>Call Launchpad API</h2>
+  <div class="row">
+    <div><input id="lp-api" type="text" value="people/+me" placeholder="API path, e.g. people/+me"></div>
+    <div style="flex:0"><button id="lp-call" disabled>GET /devel/{path}</button></div>
+  </div>
+  <pre id="lp-api-result"></pre>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const redirectUri = window.location.origin + window.location.pathname;
+
+function b64url(bytes) {
+  return btoa(String.fromCharCode(...new Uint8Array(bytes)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function randomString(len) {
+  const bytes = new Uint8Array(len);
+  crypto.getRandomValues(bytes);
+  return b64url(bytes);
+}
+async function sha256(text) {
+  return await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+}
+
+// ── Discovery ────────────────────────────────────────────────────
+(async () => {
+  try {
+    const r = await fetch("/.well-known/openid-configuration");
+    const d = await r.json();
+    $("discovery").textContent = JSON.stringify(d, null, 2);
+  } catch (e) {
+    $("discovery").textContent = "Failed: " + e;
+  }
+})();
+
+// ── Launchpad OIDC (built-in provider) ──────────────────────────
+const LP_KEY = "lp_tokens";
+
+function renderLp(data) {
+  if (!data || !data.access_token) {
+    $("lp-tokens").textContent = "(not logged in)";
+    $("lp-call").disabled = true;
+    return;
+  }
+  let display = { ...data };
+  if (data.id_token) {
+    try {
+      const [, payload] = data.id_token.split(".");
+      display.id_token_payload = JSON.parse(atob(payload.replace(/-/g,"+").replace(/_/g,"/")));
+    } catch {}
+  }
+  $("lp-tokens").textContent = JSON.stringify(display, null, 2);
+  $("lp-call").disabled = false;
+}
+
+async function lpLogin() {
+  const verifier = randomString(64);
+  const challenge = b64url(await sha256(verifier));
+  const state = randomString(16);
+  sessionStorage.setItem("lp_verifier", verifier);
+  sessionStorage.setItem("lp_state", state);
+  const p = new URLSearchParams({
+    response_type: "code",
+    client_id: "concourse-ci",
+    redirect_uri: redirectUri,
+    state,
+    nonce: randomString(16),
+    scope: "openid profile",
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+  });
+  window.location.href = "/oauth2/login?" + p;
+}
+
+async function lpExchange(code) {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
+    client_id: "concourse-ci",
+    code_verifier: sessionStorage.getItem("lp_verifier") || "",
+  });
+  const r = await fetch("/oauth2/token", { method: "POST", body });
+  const d = await r.json();
+  if (!r.ok) throw new Error(JSON.stringify(d));
+  return d;
+}
+
+$("lp-login").addEventListener("click", lpLogin);
+$("lp-logout").addEventListener("click", () => {
+  localStorage.removeItem(LP_KEY);
+  sessionStorage.removeItem("lp_verifier");
+  sessionStorage.removeItem("lp_state");
+  renderLp(null);
+  $("lp-api-result").textContent = "";
+  history.replaceState(null, "", redirectUri);
+});
+$("lp-call").addEventListener("click", async () => {
+  const stored = JSON.parse(localStorage.getItem(LP_KEY) || "{}");
+  if (!stored.access_token) return;
+  const api = $("lp-api").value.trim();
+  const r = await fetch(`/devel/${api}`, { headers: { Authorization: "Bearer " + stored.access_token } });
+  $("lp-api-result").textContent = JSON.stringify(await r.json(), null, 2);
+});
+
+// ── On load: handle callback codes ──────────────────────────────
+(async () => {
+  const url = new URL(window.location.href);
+  const code  = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+
+  if (!code) {
+    renderLp(JSON.parse(localStorage.getItem(LP_KEY) || "null"));
+    return;
+  }
+
+  history.replaceState(null, "", redirectUri);
+
+  const lpState = sessionStorage.getItem("lp_state");
+
+  if (state === lpState) {
+    try {
+      const d = await lpExchange(code);
+      localStorage.setItem(LP_KEY, JSON.stringify(d));
+      renderLp(d);
+    } catch (e) {
+      $("lp-tokens").innerHTML = '<span class="error">Token exchange failed: ' + e.message + "</span>";
+    }
+  } else {
+    $("lp-tokens").innerHTML = '<span class="error">Unknown state parameter — possible CSRF, aborting.</span>';
+  }
+})();
+</script>
+</body>
+</html>
