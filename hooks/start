@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=hooks/common.sh
 . "$(dirname "$0")/common.sh"
 
 write_env_file

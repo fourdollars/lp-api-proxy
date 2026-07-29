@@ -5,10 +5,10 @@ requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = [
     "cryptography>=42.0.0",
-    "fastapi>=0.115.12",
-    "gunicorn>=23.0.0",
+    "fastapi>=0.140.13",
+    "gunicorn>=26.0.0",
     "pyjwt>=2.9.0",
-    "python-multipart>=0.0.31",
-    "requests>=2.32.4",
-    "uvicorn>=0.34.3",
+    "python-multipart>=0.0.32",
+    "requests>=2.34.2",
+    "uvicorn>=0.52.0",
 ]
