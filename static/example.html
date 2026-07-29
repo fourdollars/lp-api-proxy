@@ -33,6 +33,9 @@
      <button id="lp-logout">Clear session</button></p>
   <pre id="lp-tokens">(not logged in)</pre>
 
+  <h2>OIDC Userinfo</h2>
+  <pre id="lp-userinfo">(not logged in)</pre>
+
   <h2>Call Launchpad API</h2>
   <div class="row">
     <div><input id="lp-api" type="text" value="people/+me" placeholder="API path, e.g. people/+me"></div>
@@ -153,6 +156,7 @@ const LP_KEY = "lp_tokens";
 function renderLp(data) {
   if (!data || !data.access_token) {
     $("lp-tokens").textContent = "(not logged in)";
+    $("lp-userinfo").textContent = "(not logged in)";
     $("lp-call").disabled = true;
     return;
   }
@@ -165,6 +169,18 @@ function renderLp(data) {
   }
   $("lp-tokens").textContent = JSON.stringify(display, null, 2);
   $("lp-call").disabled = false;
+}
+
+async function renderUserinfo(accessToken) {
+  const r = await fetch("/oauth2/userinfo", {
+    headers: { Authorization: "Bearer " + accessToken },
+  });
+  const { parsed, raw } = await parseJsonOrText(r);
+  if (!r.ok) {
+    $("lp-userinfo").innerHTML = '<span class="error">userinfo failed: ' + (parsed ? JSON.stringify(parsed) : raw || `HTTP ${r.status}`) + "</span>";
+    return;
+  }
+  $("lp-userinfo").textContent = JSON.stringify(parsed, null, 2);
 }
 
 async function lpLogin() {
@@ -215,7 +231,16 @@ $("lp-call").addEventListener("click", async () => {
   if (!stored.access_token) return;
   const api = $("lp-api").value.trim();
   const r = await fetch(`/devel/${api}`, { headers: { Authorization: "Bearer " + stored.access_token } });
-  $("lp-api-result").textContent = JSON.stringify(await r.json(), null, 2);
+  const { parsed, raw } = await parseJsonOrText(r);
+  if (!r.ok) {
+    if (r.status === 401) {
+      localStorage.removeItem(LP_KEY);
+      renderLp(null);
+    }
+    $("lp-api-result").innerHTML = '<span class="error">API request failed: ' + (parsed ? JSON.stringify(parsed) : raw || `HTTP ${r.status}`) + "</span>";
+    return;
+  }
+  $("lp-api-result").textContent = JSON.stringify(parsed ?? raw, null, 2);
 });
 
 // ── On load: handle callback codes ──────────────────────────────
@@ -225,7 +250,11 @@ $("lp-call").addEventListener("click", async () => {
   const state = url.searchParams.get("state");
 
   if (!code) {
-    renderLp(JSON.parse(localStorage.getItem(LP_KEY) || "null"));
+    const stored = JSON.parse(localStorage.getItem(LP_KEY) || "null");
+    renderLp(stored);
+    if (stored && stored.access_token) {
+      await renderUserinfo(stored.access_token);
+    }
     return;
   }
 
@@ -238,6 +267,7 @@ $("lp-call").addEventListener("click", async () => {
       const d = await lpExchange(code);
       localStorage.setItem(LP_KEY, JSON.stringify(d));
       renderLp(d);
+      await renderUserinfo(d.access_token);
     } catch (e) {
       $("lp-tokens").innerHTML = '<span class="error">Token exchange failed: ' + e.message + "</span>";
     }

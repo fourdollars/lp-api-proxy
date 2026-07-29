@@ -620,6 +620,7 @@ def oidc_provider_discovery():
             "sub",
             "username",
             "user_id",
+            "lp_oauth_consumer_key",
             "name",
             "profile",
             "groups",
@@ -852,6 +853,7 @@ def oauth2_launchpad_token(
 
     user = code_claims["user"]
     now = int(time.time())
+    oauth_consumer_key = code_claims.get("oauth_consumer_key", PROXY_OIDC_CLIENT_ID)
 
     id_token = _sign_id_token(
         {
@@ -860,6 +862,7 @@ def oauth2_launchpad_token(
             "sub": user["sub"],
             "username": user.get("username", user["sub"]),
             "user_id": user.get("user_id", user["sub"]),
+            "lp_oauth_consumer_key": oauth_consumer_key,
             "name": user["name"],
             "profile": user["profile"],
             "groups": user.get("groups", []),
@@ -877,6 +880,7 @@ def oauth2_launchpad_token(
             "sub": user["sub"],
             "username": user.get("username", user["sub"]),
             "user_id": user.get("user_id", user["sub"]),
+            "lp_oauth_consumer_key": oauth_consumer_key,
             "name": user["name"],
             "profile": user["profile"],
             "groups": user.get("groups", []),
@@ -910,6 +914,7 @@ def oauth2_launchpad_userinfo(
         "sub": claims.get("sub"),
         "username": claims.get("username", claims.get("sub")),
         "user_id": claims.get("user_id", claims.get("sub")),
+        "lp_oauth_consumer_key": claims.get("lp_oauth_consumer_key"),
         "name": claims.get("name"),
         "profile": claims.get("profile"),
         "groups": claims.get("groups", []),
