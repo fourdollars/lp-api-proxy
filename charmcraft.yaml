@@ -8,6 +8,19 @@ parts:
   charm:
     plugin: dump
     source: .
+    build-packages:
+      - python3-pip
+    override-build: |
+      craftctl default
+      mkdir -p "${CRAFT_PART_INSTALL}/vendor"
+      pip3 download \
+        --dest "${CRAFT_PART_INSTALL}/vendor" \
+        --platform manylinux2014_x86_64 \
+        --python-version 312 \
+        --implementation cp \
+        --abi cp312 \
+        --only-binary :all: \
+        -r "${CRAFT_PART_INSTALL}/requirements.txt"
     prime:
       - hooks
       - static
@@ -15,3 +28,4 @@ parts:
       - config.yaml
       - main.py
       - requirements.txt
+      - vendor

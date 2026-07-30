@@ -103,8 +103,13 @@ ensure_runtime() {
     python3 -m venv "${VENV_DIR}"
   fi
 
-  "${VENV_DIR}/bin/pip" install --upgrade pip >/dev/null
-  "${VENV_DIR}/bin/pip" install -r "${APP_DIR}/requirements.txt"
+  if [[ -d "${APP_DIR}/vendor" ]]; then
+    # Install from bundled wheels (no network access required)
+    "${VENV_DIR}/bin/pip" install --no-index --find-links "${APP_DIR}/vendor" -r "${APP_DIR}/requirements.txt"
+  else
+    "${VENV_DIR}/bin/pip" install --upgrade pip >/dev/null
+    "${VENV_DIR}/bin/pip" install -r "${APP_DIR}/requirements.txt"
+  fi
 }
 
 write_env_file() {
