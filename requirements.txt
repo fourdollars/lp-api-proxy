@@ -14,7 +14,7 @@ charset-normalizer==3.4.9
     # via requests
 click==8.4.2
     # via uvicorn
-cryptography==49.0.0
+cryptography==50.0.0
     # via lp-api-proxy (pyproject.toml)
 fastapi==0.140.13
     # via lp-api-proxy (pyproject.toml)
