@@ -49,6 +49,11 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 LP_CONSUMER_KEY = os.environ.get("LP_CONSUMER_KEY", "lp-api-proxy")
 LP_CONSUMER_SECRET = os.environ.get("LP_CONSUMER_SECRET", "")
 LP_SIGNATURE_METHOD = os.environ.get("LP_SIGNATURE_METHOD", "PLAINTEXT")
+LP_ALLOW_PERMISSION = [
+    item.strip()
+    for item in os.environ.get("LP_ALLOW_PERMISSION", "").split(",")
+    if item.strip()
+]
 PROXY_ALLOWED_ORIGINS = [
     item.strip().lower().rstrip("/")
     for item in os.environ.get("PROXY_ALLOWED_ORIGINS", "").split(",")
@@ -706,6 +711,8 @@ def oauth2_launchpad_login(
         + urllib.parse.urlencode({"session": session_token})
     )
     params = {"oauth_token": req_token, "oauth_callback": callback_url}
+    if LP_ALLOW_PERMISSION:
+        params = list(params.items()) + [("allow_permission", p) for p in LP_ALLOW_PERMISSION]
     return RedirectResponse(
         f"{LAUNCHPAD_URL}/+authorize-token?" + urllib.parse.urlencode(params)
     )

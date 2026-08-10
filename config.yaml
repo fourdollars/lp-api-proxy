@@ -67,3 +67,11 @@ options:
     type: int
     default: 600
     description: Login session token lifetime in seconds.
+  allow-permission:
+    type: string
+    default: ""
+    description: >
+      Comma-separated list of Launchpad allow_permission values passed to
+      +authorize-token during the OAuth login flow (e.g. READ_PUBLIC,
+      WRITE_PUBLIC, READ_PRIVATE, WRITE_PRIVATE).
+      Empty string omits the parameter and lets Launchpad use its own default.
