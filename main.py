@@ -243,7 +243,17 @@ def _oauth1_authorization_header(
 #   PROXY_CODE_TTL_SECONDS    Authorization code lifetime (default: 120 seconds).
 #   LOGIN_SESSION_TTL_SECONDS Login session token lifetime (default: 600 seconds).
 
-PROXY_BASE_URL = os.environ.get("PROXY_BASE_URL", "http://localhost:3456").rstrip("/")
+PROXY_BASE_URL = os.environ.get("PROXY_BASE_URL", "").rstrip("/")
+
+
+def effective_base_url(request: Request = None) -> str:
+    """Return PROXY_BASE_URL if configured, otherwise derive from the request."""
+    if PROXY_BASE_URL:
+        return PROXY_BASE_URL
+    if request is not None:
+        return str(request.base_url).rstrip("/")
+    return "http://localhost:3456"
+
 PROXY_RSA_PRIVATE_KEY_PEM = os.environ.get("PROXY_RSA_PRIVATE_KEY")
 PROXY_OIDC_CLIENT_ID = os.environ.get("PROXY_OIDC_CLIENT_ID", "concourse-ci")
 PROXY_OIDC_CLIENT_SECRET = os.environ.get("PROXY_OIDC_CLIENT_SECRET")
@@ -606,10 +616,10 @@ def access_token(
 
 
 @app.get("/.well-known/openid-configuration", response_class=JSONResponse)
-def oidc_provider_discovery():
+def oidc_provider_discovery(request: Request = None):
     """Standard OIDC discovery document. Point Concourse at this proxy by
     setting the OIDC connector issuer to PROXY_BASE_URL."""
-    base = PROXY_BASE_URL
+    base = effective_base_url(request)
     return {
         "issuer": base,
         "authorization_endpoint": f"{base}/oauth2/login",
@@ -706,7 +716,7 @@ def oauth2_launchpad_login(
         LOGIN_SESSION_TTL_SECONDS,
     )
     callback_url = (
-        str(request.base_url).rstrip("/")
+        effective_base_url(request)
         + "/oauth2/callback?"
         + urllib.parse.urlencode({"session": session_token})
     )
