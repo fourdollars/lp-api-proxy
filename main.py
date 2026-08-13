@@ -471,7 +471,8 @@ def _lp_fetch_me(oauth_token, oauth_token_secret, oauth_consumer_key):
     data = resp.json()
     groups, groups_full = _lp_fetch_groups(auth, data)
     username = data.get("name", oauth_token)
-    return {
+    email = _lp_extract_preferred_email(data)
+    user = {
         "sub": username,
         "username": username,
         "user_id": username,
@@ -482,6 +483,31 @@ def _lp_fetch_me(oauth_token, oauth_token_secret, oauth_consumer_key):
         "groups": groups,
         "groups_full": groups_full,
     }
+    if email:
+        user["email"] = email
+        user["email_verified"] = True
+    return user
+
+
+def _lp_extract_preferred_email(me_data):
+    """Best-effort extraction of the user's preferred email address.
+
+    Launchpad's people/+me resource exposes ``preferred_email_address_link``,
+    a URL of the form ``.../~user/+email/<address>``. The email address is
+    URL-encoded as the final path segment, so we can read it directly without
+    an extra authenticated round-trip to Launchpad. Returns None when the
+    field is absent (e.g. hide_email_addresses is set, or the OAuth scope
+    doesn't grant access to it).
+    """
+    link = me_data.get("preferred_email_address_link")
+    if not isinstance(link, str) or "+email/" not in link:
+        return None
+    candidate = link.rsplit("+email/", 1)[-1]
+    candidate = urllib.parse.unquote(candidate)
+    # Basic sanity check — don't propagate garbage as an email claim.
+    if "@" not in candidate or " " in candidate:
+        return None
+    return candidate
 
 
 # Authorization header resolver (Bearer JWT -> OAuth 1.0a)
@@ -629,7 +655,7 @@ def oidc_provider_discovery(request: Request = None):
         "response_types_supported": ["code"],
         "subject_types_supported": ["public"],
         "id_token_signing_alg_values_supported": ["RS256"],
-        "scopes_supported": ["openid", "profile"],
+        "scopes_supported": ["openid", "profile", "email"],
         "token_endpoint_auth_methods_supported": ["client_secret_post", "none"],
         "claims_supported": [
             "sub",
@@ -637,6 +663,8 @@ def oidc_provider_discovery(request: Request = None):
             "user_id",
             "name",
             "profile",
+            "email",
+            "email_verified",
             "groups",
             "groups_full",
             "iss",
@@ -884,6 +912,8 @@ def oauth2_launchpad_token(
             "groups_full": user.get("groups_full", []),
             "iat": now,
             "exp": now + PROXY_JWT_TTL_SECONDS,
+            **({"email": user["email"]} if user.get("email") else {}),
+            **({"email_verified": user["email_verified"]} if user.get("email") else {}),
             **({"nonce": code_claims["nonce"]} if code_claims.get("nonce") else {}),
         }
     )
@@ -901,6 +931,8 @@ def oauth2_launchpad_token(
             "groups": user.get("groups", []),
             "groups_full": user.get("groups_full", []),
             "lp_cred": code_claims["lp_cred"],
+            **({"email": user["email"]} if user.get("email") else {}),
+            **({"email_verified": user["email_verified"]} if user.get("email") else {}),
         },
         PROXY_JWT_TTL_SECONDS,
     )
@@ -934,6 +966,8 @@ def oauth2_launchpad_userinfo(
         "profile": claims.get("profile"),
         "groups": claims.get("groups", []),
         "groups_full": claims.get("groups_full", []),
+        **({"email": claims["email"]} if claims.get("email") else {}),
+        **({"email_verified": claims["email_verified"]} if claims.get("email") else {}),
     }
 
 
